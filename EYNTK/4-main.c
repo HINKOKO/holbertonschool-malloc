@@ -54,7 +54,7 @@ void *naive_malloc_page(size_t size)
 
 	chunk_count++;
 
-	payload_addr = (char *)block_ptr - sizeof(size_t);
+	payload_addr = (char *)block_ptr + sizeof(size_t);
 
 	return (payload_addr);
 }
