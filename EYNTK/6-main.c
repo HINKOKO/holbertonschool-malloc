@@ -9,6 +9,8 @@
 #define COLORALIGN "\033[36m"
 #define RESET "\033[0m"
 
+#define ALIGN(size) ((size + (8 - 1)) & ~(8 - 1))
+
 /* block zero => beginning of the heap allocated */
 static void *block_zero = NULL;
 /* var to keep track of chunks used */
@@ -30,8 +32,9 @@ void *naive_malloc_extend(size_t size)
 	size_t i, std_block_size, block_size, unused_block_size = 0;
 	long pagesize;
 
-	std_block_size = size + sizeof(size_t);
-	printf("%sstd_block_size not aligned is => %lu%s\n", COLORALIGN, std_block_size, RESET);
+	std_block_size = ALIGN(size) + sizeof(size_t);
+
+	printf("%sstd_block_size aligned is => %lu%s\n", COLORALIGN, std_block_size, RESET);
 
 	if (chunk_count == 0)
 	{
@@ -59,7 +62,7 @@ void *naive_malloc_extend(size_t size)
 
 	next_block = (char *)block_ptr + std_block_size;
 
-	while (unused_block_size < (sizeof(size_t) * 2) + size)
+	while (unused_block_size < (sizeof(size_t) * 2) + ALIGN(size))
 	{
 		pagesize = sysconf(_SC_PAGE_SIZE);
 		if (pagesize == -1)
@@ -90,6 +93,9 @@ void *naive_malloc_extend(size_t size)
 /**
  * main - Program entry point
  *
+ * ==> we request some 'size_t size' of allocation in our
+ * naive_malloc_align => sive passed as parameters must be rounded up to the next multiple of 8qq
+ *
  * Return: EXIT_SUCCESS or EXIT_FAILURE
  */
 int main(void)
@@ -103,7 +109,7 @@ int main(void)
 	{
 		void *chunk;
 
-		str = naive_malloc_extend(10);
+		str = naive_malloc_extend(16);
 		strcpy(str, "Holberton");
 		str[9] = '\0';
 		printf("%p: %s, ", (void *)str, str);
