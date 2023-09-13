@@ -18,5 +18,6 @@
 #define ALIGN(size) ((size + (HEADER - 1)) & ~(HEADER - 1))
 
 void *naive_malloc(size_t size);
+void *_malloc(size_t size);
 
 #endif /* __MALLOC__ */
