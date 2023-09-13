@@ -4,62 +4,59 @@
 #include <unistd.h>
 
 #define RED "\033[31m"
-#define COLOR "\033[33m"
+#define COLOR "\033[35m"
+#define COLORDIFF "\033[32m"
 #define RESET "\033[0m"
 
-static void *block_zero;
-static size_t chunks = 0;
+/* block zero => beginning of the heap allocated */
+static void *block_zero = NULL;
+/* var to keep track of chunks used */
+static size_t chunk_count = 0;
 
 void *naive_malloc_page(size_t size)
 {
-	void *block_ptr = NULL, *next_block = NULL, *addr = NULL;
-	size_t std_block_size = 0, i, block_size, unused_block_space = 0;
-	long pagesize = 0;
+	void *block_ptr, *next_block, *payload_addr = NULL;
+	size_t i, std_block_size, block_size, unused_block_size = 0;
+	long pagesize;
 
 	std_block_size = size + sizeof(size_t);
+	(void)unused_block_size;
+	(void)block_size;
 
-	if (chunks == 0)
+	if (chunk_count == 0)
 	{
-		/* first call no chunks allocated to boom a PAGE_SIZE right away */
 		pagesize = sysconf(_SC_PAGE_SIZE);
 		if (pagesize == -1)
 		{
-			fprintf(stderr, "naive_malloc_page: sysconf error");
+			perror("sysconf");
 			return (NULL);
 		}
+		/* extend the program break by the virtual memory page size */
 		block_zero = sbrk(pagesize);
 		if (block_zero == (void *)-1)
-		{
-			perror("naive_malloc_page: sbrk error");
 			return (NULL);
-		}
-		printf("%sblock zero points to %p%s\n", COLOR, block_zero, RESET);
-		printf("%sProgram break after page alloc is %p%s\n", RED, sbrk(0), RESET);
+		printf("%sNew program break is %p%s\n", RED, sbrk(0), RESET);
+		printf("%Hey there Block Zero point to (beginning of heap)=> %p%s?\n", COLOR, block_zero, RESET);
+		printf("%s Yeah cool I notice a diff of 0x1000 bytes == 4096 == pagesize between block_zero and the new program break %s\n", COLORDIFF, RESET);
 	}
-
-	/**
-	 * analysis on sbrk(0) and first_chunk pointer reveals a difference of
-	 * 0x1000 bytes => 4096 bytes == page size on the system
-	 * let's go to iterate through that
-	 */
-	/* random brk offset, not contiguous with program I think */
-
-	for (i = 0, block_ptr = block_zero; i < chunks; i++)
+	/* loop through that mega chunk and chunky chunk */
+	for (i = 0, block_ptr = block_zero; i < chunk_count; i++)
 	{
-		// if (i == 0)
-		// 	printf("blocksize when i is 0 is %lu\n", block_size);
 		block_size = *(size_t *)block_ptr;
 		block_ptr = (char *)block_ptr + block_size;
 	}
-	unused_block_space = chunks ? *(size_t *)block_ptr : (size_t)pagesize;
-	// printf("%sunused at first call%lu%s\n", COLOR, tmp, RESET);
-	next_block = (char *)block_ptr + std_block_size;
-	*(size_t *)next_block = unused_block_space - std_block_size;
-	*(size_t *)block_ptr = std_block_size;
-	chunks++;
+	unused_block_size = chunk_count ? *(size_t *)block_ptr : (size_t)pagesize;
 
-	addr = (char *)block_ptr + sizeof(size_t);
-	return (addr);
+	next_block = (char *)block_ptr + std_block_size;
+
+	*(size_t *)next_block = unused_block_size - std_block_size;
+	*(size_t *)block_ptr = std_block_size;
+
+	chunk_count++;
+
+	payload_addr = (char *)block_ptr - sizeof(size_t);
+
+	return (payload_addr);
 }
 
 /**
@@ -78,7 +75,7 @@ int main(void)
 	{
 		void *chunk;
 
-		str = naive_malloc_page(10);
+		str = naive_malloc_page(1016);
 		strcpy(str, "Holberton");
 		str[9] = '\0';
 		printf("%p: %s, ", (void *)str, str);
@@ -88,6 +85,6 @@ int main(void)
 		printf("%sbreak: %p%s\n", RED, sbrk(0), RESET);
 	}
 
-	printf("Final break is %p\n", sbrk(0));
+	printf("%sFinal break is %p%s\n", RED, sbrk(0), RESET);
 	return (EXIT_SUCCESS);
 }
