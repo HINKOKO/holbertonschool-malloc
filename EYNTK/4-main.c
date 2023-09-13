@@ -54,7 +54,7 @@ void *naive_malloc_page(size_t size)
 
 	chunk_count++;
 
-	payload_addr = (char *)block_ptr - sizeof(size_t);
+	payload_addr = (char *)block_ptr + sizeof(size_t);
 
 	return (payload_addr);
 }
@@ -75,7 +75,7 @@ int main(void)
 	{
 		void *chunk;
 
-		str = naive_malloc_page(1016);
+		str = naive_malloc_page(10);
 		strcpy(str, "Holberton");
 		str[9] = '\0';
 		printf("%p: %s, ", (void *)str, str);
