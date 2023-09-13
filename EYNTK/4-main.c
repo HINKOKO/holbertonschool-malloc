@@ -36,8 +36,8 @@ void *naive_malloc_page(size_t size)
 		if (block_zero == (void *)-1)
 			return (NULL);
 		printf("%sNew program break is %p%s\n", RED, sbrk(0), RESET);
-		printf("%Hey there Block Zero point to (beginning of heap)=> %p%s?\n", COLOR, block_zero, RESET);
-		printf("%s Yeah cool I notice a diff of 0x1000 bytes == 4096 == pagesize between block_zero and the new program break %s\n", COLORDIFF, RESET);
+		printf("%sHey there Block Zero point to (beginning of heap)=> %p%s?\n", COLOR, block_zero, RESET);
+		printf("%sYeah cool I notice a diff of 0x1000 bytes == 4096 == pagesize between block_zero and the new program break %s\n", COLORDIFF, RESET);
 	}
 	/* loop through that mega chunk and chunky chunk */
 	for (i = 0, block_ptr = block_zero; i < chunk_count; i++)
@@ -54,7 +54,7 @@ void *naive_malloc_page(size_t size)
 
 	chunk_count++;
 
-	payload_addr = (char *)block_ptr + sizeof(size_t);
+	payload_addr = (char *)block_ptr - sizeof(size_t);
 
 	return (payload_addr);
 }
