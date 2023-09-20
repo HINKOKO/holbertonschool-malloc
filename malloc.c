@@ -1,66 +1,7 @@
 #include "malloc.h"
 
-/**
- * first_call - like an 'init_heap' function so to speak
- * called first when our _malloc is invoked to allocate
- * memory on the heap, aligned on the page_size of system
- *
- * @page: long variable to save the page size
- *
- * Return: pointer to the starting big heap block of size page
- */
-
-void *first_call(long *page)
-{
-	void *block_zero;
-
-	(*page) = sysconf(_SC_PAGESIZE);
-	if ((*page) == -1)
-	{
-		perror("sysconf");
-		return (NULL);
-	}
-	block_zero = sbrk((*page));
-	if (block_zero == (void *)-1)
-	{
-		perror("First call to heap alloc: error\n");
-		return (NULL);
-	}
-	return (block_zero);
-}
-
-/**
- * new_page - alloc new page on the heap
- * when it's not sufficient anymore
- * @ptr: pointer to alloce'd page
- * @chunks_len: Number of chunks
- * @block: size of block that has been asked for to alloc
- * @page: Value of the page of running system
- *
- * Return: Pointer to new alloce'd page
- */
-
-void *new_page(void *ptr, size_t *chunks_len, size_t block, long page)
-{
-	void *next_page;
-	size_t tmp = 0;
-
-	tmp = *chunks_len ? *(size_t *)ptr : (size_t)page;
-	next_page = (char *)ptr + block;
-	*(size_t *)next_page = tmp - block;
-
-	while (tmp < block)
-	{
-		page = sysconf(_SC_PAGESIZE);
-		if (page == -1)
-			return (NULL);
-		if (sbrk(page) == (void *)-1)
-			return (NULL);
-		tmp += page;
-	}
-	*(size_t *)((char *)ptr + sizeof(void *)) = block;
-	return (ptr);
-}
+static void *first_block;
+static size_t chunks;
 
 /**
  * _malloc - mimics malloc, Ramdeck ! simply
@@ -73,41 +14,40 @@ void *new_page(void *ptr, size_t *chunks_len, size_t block, long page)
 
 void *_malloc(size_t size)
 {
-	static void *first_block;
-	static size_t chunks_len;
-	block_t *temp;
-	void *ptr, *payload_addr;
-	size_t block = ALIGN(size) + DATA;
-	size_t i, block_size, freed = 0;
-	long page = 0;
+	void *ptr, *prev_break, *payload_addr;
+	size_t i, requested = 0, freed = 0, pad = 0;
 
 	/* enters here when starting */
-	if (chunks_len == 0)
+	if (!chunks)
 	{
-		first_block = first_call(&page);
-		if (!first_block)
+		prev_break = sbrk(PAGE);
+		if (!prev_break)
 			return (NULL);
+		first_block = prev_break;
+		memset(prev_break, 0, PAGE);
+		/* do we need to write the size at first block ? */
 	}
-	for (i = 0, ptr = first_block; i < chunks_len; ++i)
+	for (i = 0, ptr = first_block; i < chunks; i++)
 	{
-		block_size = *(size_t *)((char *)ptr + sizeof(block_t));
-		temp = (block_t *)ptr;
-		if (temp->used == 0 && block_size <= block)
-		{
-			freed = 1;
-			break;
-		}
-		ptr = (char *)ptr + block_size;
+		/* loop to traverse linked list of blocks */
+		/* advance ptr by size of the blocks */
+		ptr = ((char *)ptr) + *((size_t *)((char *)ptr));
 	}
+	/* value in freed */
+	freed = *(size_t *)ptr;
+	requested = DATA + size; /* add the 'header' to the block requested by user */
+	pad = ALIGN(requested) - requested;
+	requested += pad;
 
-	if (!freed)
-		ptr = new_page(ptr, &chunks_len, block, page);
-
-	*(size_t *)ptr = 0;
-	(*(size_t *)((char *)ptr + sizeof(size_t)))++;
-	chunks_len++;
-
+	while (((int)freed) - ((int)requested) < 0)
+	{
+		prev_break = sbrk(PAGE);
+		memset(prev_break, 0, PAGE);
+		freed += PAGE;
+	}
+	*(size_t *)ptr = requested;
 	payload_addr = (char *)ptr + DATA;
-
+	*((size_t *)(char *)ptr + requested) = freed - requested;
+	chunks++;
 	return (payload_addr);
 }
