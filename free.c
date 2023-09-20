@@ -8,6 +8,13 @@
 
 void _free(void *ptr)
 {
+	char *freeder;
+	block_t *block;
+
 	if (ptr)
-		((block_t *)((char *)ptr - sizeof(size_t) - sizeof(block_t)))->used = 0;
+	{
+		freeder = (char *)ptr - sizeof(block_t);
+		block = (void *)freeder;
+		block->block_size = 0;
+	}
 }

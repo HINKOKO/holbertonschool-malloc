@@ -27,7 +27,7 @@
 
 typedef struct block_s
 {
-	size_t next;
+	size_t block_size;
 } block_t;
 
 void *naive_malloc(size_t size);
