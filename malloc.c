@@ -30,7 +30,6 @@ void *_malloc(size_t size)
 
 	for (i = 0, ptr = first_block; i < chunks; i++)
 	{
-		/* iterate over the block to find a place to fit */
 		ptr = ((char *)ptr) + *((size_t *)((char *)ptr));
 	}
 
@@ -41,14 +40,10 @@ void *_malloc(size_t size)
 
 	while (((int)unused_mem) - ((int)requested) < 0)
 	{
-		/* when request exceed available unused memory */
-		/* from the previous call to sbrk(PAGE) */
 		prev_break = sbrk(PAGE);
-		/* this check because at some point memory might be exhausted*/
 		if (prev_break == (void *)-1)
 			return (NULL);
 		memset(prev_break, 0, PAGE);
-		/* update your new memory credit accordingly */
 		unused_mem += PAGE;
 	}
 

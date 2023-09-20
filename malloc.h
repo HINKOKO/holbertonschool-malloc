@@ -20,21 +20,14 @@
 
 /* #define ALI(size) ((((size - 1) >> 4) << 4) + 16) */
 
-typedef struct heap_s
-{
-	size_t next;
-} heap_t;
-
 /**
  * struct block_s - struct to register blocks of memory
- * @start: pointer to start address of blocks
- * @used: flag to know whether used or not this one ?
+ * @next: size to reach next
  */
 
 typedef struct block_s
 {
-	void *start;
-	char used;
+	size_t next;
 } block_t;
 
 void *naive_malloc(size_t size);
