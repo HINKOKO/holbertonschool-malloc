@@ -16,8 +16,14 @@
 
 #define DATA 0x10 /* 16 bytes of header for each chunk */
 #define ALIGN(size) ((size + (DATA - 1)) & ~(DATA - 1))
+#define PAGE sysconf(_SC_PAGESIZE)
 
 /* #define ALI(size) ((((size - 1) >> 4) << 4) + 16) */
+
+typedef struct heap_s
+{
+	size_t next;
+} heap_t;
 
 /**
  * struct block_s - struct to register blocks of memory
