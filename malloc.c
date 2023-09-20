@@ -1,53 +1,50 @@
 #include "malloc.h"
 
-static void *first_block;
-static size_t chunks;
-
 /**
- * _malloc - mimics malloc, Ramdeck ! simply
- *
- * @size: size requested to be malloced
- *
- * Return: pointer to allocated memory (for user) that is
- * " suitably aligned for any kind of variable " (man malloc)
+ * _malloc - reimplementation of malloc
+ * @size: bytes requested
+ * Return: SUCCESS= pointer to allocated memory; FAIL = NULL
  */
-
 void *_malloc(size_t size)
 {
-	void *ptr, *prev_break, *payload_addr;
-	size_t i, requested = 0, freed = 0, pad = 0;
+	static void *heap_start;
+	static size_t chunks;
+	void *valid_unused_memory_ptr = NULL, *previous_break = NULL, *ptr = NULL;
+	size_t unused_memory = 0, i = 0, mem_asked = 0, padding = 0;
 
-	/* enters here when starting */
-	if (!chunks)
+	if (size == 0)
+		return (NULL);
+
+	if (!heap_start)
 	{
-		prev_break = sbrk(PAGE);
-		if (!prev_break)
+		previous_break = sbrk(PAGE);
+		if (previous_break == ((void *)-1))
 			return (NULL);
-		first_block = prev_break;
-		memset(prev_break, 0, PAGE);
-		/* do we need to write the size at first block ? */
+		heap_start = previous_break;
+		memset(previous_break, 0, PAGE);
+		*((size_t *)((char *)heap_start)) = PAGE - sizeof(size_t);
 	}
-	for (i = 0, ptr = first_block; i < chunks; i++)
-	{
-		/* loop to traverse linked list of blocks */
-		/* advance ptr by size of the blocks */
-		ptr = ((char *)ptr) + *((size_t *)((char *)ptr));
-	}
-	/* value in freed */
-	freed = *(size_t *)ptr;
-	requested = DATA + size; /* add the 'header' to the block requested by user */
-	pad = ALIGN(requested) - requested;
-	requested += pad;
 
-	while (((int)freed) - ((int)requested) < 0)
+	for (i = 0, ptr = heap_start; i < chunks; i++)
+		ptr = ((char *)ptr) + *((size_t *)((char *)ptr));
+
+	unused_memory = *((size_t *)((char *)ptr));
+	mem_asked = sizeof(size_t) + size;
+	padding = (sizeof(size_t) - (mem_asked % sizeof(size_t))) % sizeof(size_t);
+	mem_asked += padding;
+
+	while (((int)unused_memory) - ((int)mem_asked) < 0)
 	{
-		prev_break = sbrk(PAGE);
-		memset(prev_break, 0, PAGE);
-		freed += PAGE;
+		previous_break = sbrk(PAGE);
+		if (previous_break == ((void *)-1))
+			return (NULL);
+		memset(previous_break, 0, PAGE);
+		unused_memory += PAGE;
 	}
-	*(size_t *)ptr = requested;
-	payload_addr = (char *)ptr + DATA;
-	*((size_t *)(char *)ptr + requested) = freed - requested;
+
+	*((size_t *)((char *)ptr)) = mem_asked;
+	valid_unused_memory_ptr = (void *)(((char *)ptr) + sizeof(size_t));
+	*((size_t *)(((char *)ptr) + mem_asked)) = unused_memory - mem_asked;
 	chunks++;
-	return (payload_addr);
+	return (valid_unused_memory_ptr);
 }
