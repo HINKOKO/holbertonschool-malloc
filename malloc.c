@@ -1,17 +1,18 @@
 #include "malloc.h"
 
 /**
- * first_call - function to mimic malloc first allocation
- * of a page-sized block when called.
- * => Just a piece of code for 'init' the first memory allocation
- * of size 'page' according to system
- * @page: size of the page
- * Return: pointer to the first chunk of allocated page
+ * first_call - like an 'init_heap' function so to speak
+ * called first when our _malloc is invoked to allocate
+ * memory on the heap, aligned on the page_size of system
+ *
+ * @page: long variable to save the page size
+ *
+ * Return: pointer to the starting big heap block of size page
  */
 
-void *first_call(ssize_t *page)
+void *first_call(long *page)
 {
-	void *first_chunk;
+	void *block_zero;
 
 	(*page) = sysconf(_SC_PAGESIZE);
 	if ((*page) == -1)
@@ -19,62 +20,95 @@ void *first_call(ssize_t *page)
 		perror("sysconf");
 		return (NULL);
 	}
-	first_chunk = sbrk((*page));
-	if (first_chunk == (void *)-1)
+	block_zero = sbrk((*page));
+	if (block_zero == (void *)-1)
 	{
-		perror("sbrk error");
+		perror("First call to heap alloc: error\n");
 		return (NULL);
 	}
-	return (first_chunk);
+	return (block_zero);
 }
 
 /**
- * _malloc - naive & simple implementation of malloc library call
- * @size: size needed to be allocated by user
+ * new_page - alloc new page on the heap
+ * when it's not sufficient anymore
+ * @ptr: pointer to alloce'd page
+ * @chunks_len: Number of chunks
+ * @block: size of block that has been asked for to alloc
+ * @page: Value of the page of running system
  *
- * Return: a pointer to the allocted memory, suitably aligned
- * FOR ANY KIND OF VARIABLE
+ * Return: Pointer to new alloce'd page
+ */
+
+void *new_page(void *ptr, size_t *chunks_len, size_t block, long page)
+{
+	void *next_page;
+	size_t tmp = 0;
+
+	tmp = *chunks_len ? *(size_t *)ptr : (size_t)page;
+	next_page = (char *)ptr + block;
+
+	while (tmp < block)
+	{
+		page = sysconf(_SC_PAGESIZE);
+		if (page == -1)
+			return (NULL);
+		if (sbrk(page) == (void *)-1)
+			return (NULL);
+		tmp += page;
+	}
+
+	*(size_t *)next_page = tmp - block;
+	*(size_t *)((char *)ptr + sizeof(block_t)) = block;
+	return (ptr);
+}
+
+/**
+ * _malloc - mimics malloc, Ramdeck ! simply
+ *
+ * @size: size requested to be malloced
+ *
+ * Return: pointer to allocated memory (for user) that is
+ * " suitably aligned for any kind of variable " (man malloc)
  */
 
 void *_malloc(size_t size)
 {
-	static void *block_zero;
-	static size_t chunks;
-	void *block_ptr, *next_block, *payload_addr = NULL;
-	size_t i, std_block_size, block_size, unused_block_size = 0;
-	long pagesize = 0;
+	static void *first_block;
+	static size_t chunks_len;
+	block_t *temp;
+	void *ptr, *payload_addr;
+	size_t block = ALIGN(size) + sizeof(block_t) + sizeof(size);
+	size_t i, block_size, freed = 0;
+	long page = 0;
 
-	std_block_size = ALIGN(size) + sizeof(size_t);
-
-	if (!chunks)
-		block_zero = first_call(&pagesize);
-
-	if (!block_zero)
-		return (fprintf(stderr, "first_call: failed to allocate page size"), NULL);
-
-	for (i = 0, block_ptr = block_zero; i < chunks; i++)
+	/* enters here when starting */
+	if (chunks_len == 0)
 	{
-		block_size = *(size_t *)block_ptr;
-		block_ptr = (char *)block_ptr + block_size;
+		first_block = first_call(&page);
+		if (!first_block)
+			return (NULL);
+	}
+	for (i = 0, ptr = first_block; i < chunks_len; ++i)
+	{
+		block_size = *(size_t *)((char *)ptr + sizeof(block_t));
+		temp = (block_t *)ptr;
+		if (temp->used == 0 && block_size <= block)
+		{
+			freed = 1;
+			break;
+		}
+		ptr = (char *)ptr + block_size;
 	}
 
-	unused_block_size = chunks ? *(size_t *)block_ptr : (size_t)pagesize;
-	next_block = (char *)block_ptr + std_block_size;
+	if (!freed)
+		ptr = new_page(ptr, &chunks_len, block, page);
+	temp = (block_t *)ptr;
+	temp->start = first_block;
+	temp->used = 1;
+	chunks_len++;
 
-	while (unused_block_size < (sizeof(size_t) * 2) + ALIGN(size))
-	{
-		pagesize = sysconf(_SC_PAGESIZE);
-		if (pagesize == -1)
-			return (NULL);
-		if (sbrk(pagesize) == (void *)-1)
-			return (NULL);
-		unused_block_size += pagesize;
-	}
+	payload_addr = (char *)ptr + sizeof(block_t) + sizeof(size);
 
-	*(size_t *)next_block = unused_block_size - std_block_size;
-	*(size_t *)block_ptr = std_block_size;
-	chunks++;
-
-	payload_addr = (char *)block_ptr + sizeof(size_t);
 	return (payload_addr);
 }

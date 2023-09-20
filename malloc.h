@@ -14,10 +14,25 @@
 #define COLORALIGN "\033[36m"
 #define RESET "\033[0m"
 
-#define HEADER 0x10 /* 16 bytes of header for each chunk */
-#define ALIGN(size) ((size + (HEADER - 1)) & ~(HEADER - 1))
+#define DATA 0x10 /* 16 bytes of header for each chunk */
+#define ALIGN(size) ((size + (DATA - 1)) & ~(DATA - 1))
+
+/* #define ALI(size) ((((size - 1) >> 4) << 4) + 16) */
+
+/**
+ * struct block_s - struct to register blocks of memory
+ * @start: pointer to start address of blocks
+ * @used: flag to know whether used or not this one ?
+ */
+
+typedef struct block_s
+{
+	void *start;
+	char used;
+} block_t;
 
 void *naive_malloc(size_t size);
 void *_malloc(size_t size);
+void _free(void *ptr);
 
 #endif /* __MALLOC__ */
