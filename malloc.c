@@ -4,10 +4,12 @@ static void *first_block;
 static size_t chunks;
 
 /**
- * _malloc - reimplementation of malloc
- * @size: bytes requested
- * Return: SUCCESS= pointer to allocated memory; FAIL = NULL
+ * _malloc - attempt to mimics the malloc
+ * @size: bytes requested by user
+ * Return: pointer to 'payload' address , pointer to allocated memory
+ * or NULL on failure
  */
+
 void *_malloc(size_t size)
 {
 	void *payload_addr = NULL, *prev_break = NULL, *ptr = NULL;
