@@ -47,6 +47,7 @@ void *new_page(void *ptr, size_t *chunks_len, size_t block, long page)
 
 	tmp = *chunks_len ? *(size_t *)ptr : (size_t)page;
 	next_page = (char *)ptr + block;
+	*(size_t *)next_page = tmp - block;
 
 	while (tmp < block)
 	{
@@ -57,9 +58,7 @@ void *new_page(void *ptr, size_t *chunks_len, size_t block, long page)
 			return (NULL);
 		tmp += page;
 	}
-
-	*(size_t *)next_page = tmp - block;
-	*(size_t *)((char *)ptr + sizeof(block_t)) = block;
+	*(size_t *)((char *)ptr + sizeof(void *)) = block;
 	return (ptr);
 }
 
@@ -78,7 +77,7 @@ void *_malloc(size_t size)
 	static size_t chunks_len;
 	block_t *temp;
 	void *ptr, *payload_addr;
-	size_t block = ALIGN(size) + sizeof(block_t) + sizeof(size);
+	size_t block = ALIGN(size) + DATA;
 	size_t i, block_size, freed = 0;
 	long page = 0;
 
@@ -103,12 +102,12 @@ void *_malloc(size_t size)
 
 	if (!freed)
 		ptr = new_page(ptr, &chunks_len, block, page);
-	temp = (block_t *)ptr;
-	temp->start = first_block;
-	temp->used = 1;
+
+	*(size_t *)ptr = 0;
+	(*(size_t *)((char *)ptr + sizeof(size_t)))++;
 	chunks_len++;
 
-	payload_addr = (char *)ptr + sizeof(block_t) + sizeof(size);
+	payload_addr = (char *)ptr + DATA;
 
 	return (payload_addr);
 }
