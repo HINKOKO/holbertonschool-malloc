@@ -14,7 +14,7 @@ void *_malloc(size_t size)
 {
 	void *prev_break = NULL, *ptr = NULL;
 	void *payload_addr = NULL; /* address returned to user */
-	size_t i, block_size, unused = 0, requested = 0, padding = 0;
+	size_t i, unused = 0, requested = 0, padding = 0;
 
 	if (!first_block)
 	{
