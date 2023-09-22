@@ -15,7 +15,7 @@
 #define RESET "\033[0m"
 
 #define HEADER 0x10 /* 16 bytes of header for each chunk */
-#define DATA 2 * sizeof(size_t)
+#define DATA (2 * sizeof(size_t))
 #define ALIGN(size) ((size + (DATA - 1)) & ~(DATA - 1))
 #define PAGE (sysconf(_SC_PAGESIZE))
 
@@ -23,7 +23,7 @@
 
 /**
  * struct block_s - struct to register blocks of memory
- * @next: size to reach next
+ * @block_size: size
  */
 
 typedef struct block_s
