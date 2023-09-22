@@ -12,44 +12,42 @@ static size_t chunks;
 
 void *_malloc(size_t size)
 {
-	void *payload_addr = NULL, *prev_break = NULL, *ptr = NULL;
-	size_t unused_mem = 0, i = 0, requested = 0, padding = 0;
-
-	if (size == 0)
-		return (NULL);
+	void *prev_break = NULL, *ptr = NULL;
+	void *payload_addr = NULL; /* address returned to user */
+	size_t i, block_size, unused = 0, requested = 0, padding = 0;
 
 	if (!first_block)
 	{
 		prev_break = sbrk(PAGE);
-		if (prev_break == ((void *)-1))
+		if (first_block == (void *)-1)
 			return (NULL);
 		first_block = prev_break;
 		memset(prev_break, 0, PAGE);
-		*((size_t *)((char *)first_block)) = PAGE - sizeof(size_t);
+		*((size_t *)((char *)first_block)) = PAGE - DATA;
 	}
 
+	/* iterate to find fitting_block */
 	for (i = 0, ptr = first_block; i < chunks; i++)
-	{
 		ptr = ((char *)ptr) + *((size_t *)((char *)ptr));
-	}
 
-	unused_mem = *((size_t *)((char *)ptr));
-	requested = sizeof(size_t) + size;
-	padding = (sizeof(size_t) - (requested % sizeof(size_t))) % sizeof(size_t);
+	unused = *((size_t *)((char *)ptr));
+	requested = size + DATA;
+	padding = (DATA - (requested & (DATA - 1))) & (DATA - 1);
 	requested += padding;
 
-	while (((int)unused_mem) - ((int)requested) < 0)
+	/*enters here if unused gets not sufficient */
+	while (((int)unused) - ((int)requested) < 0)
 	{
 		prev_break = sbrk(PAGE);
 		if (prev_break == (void *)-1)
 			return (NULL);
 		memset(prev_break, 0, PAGE);
-		unused_mem += PAGE;
+		unused += PAGE;
 	}
-
-	*((size_t *)((char *)ptr)) = requested;
-	payload_addr = (void *)(((char *)ptr) + sizeof(size_t));
-	*((size_t *)(((char *)ptr) + requested)) = unused_mem - requested;
+	*(size_t *)ptr = requested;
+	payload_addr = (void *)(((char *)ptr) + DATA);
+	*((size_t *)(((char *)ptr) + requested)) = unused - requested;
+	/* update chunks size */
 	chunks++;
 	return (payload_addr);
 }

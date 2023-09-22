@@ -14,9 +14,10 @@
 #define COLORALIGN "\033[36m"
 #define RESET "\033[0m"
 
-#define DATA 0x10 /* 16 bytes of header for each chunk */
+#define HEADER 0x10 /* 16 bytes of header for each chunk */
+#define DATA 2 * sizeof(size_t)
 #define ALIGN(size) ((size + (DATA - 1)) & ~(DATA - 1))
-#define PAGE sysconf(_SC_PAGESIZE)
+#define PAGE (sysconf(_SC_PAGESIZE))
 
 /* #define ALI(size) ((((size - 1) >> 4) << 4) + 16) */
 
